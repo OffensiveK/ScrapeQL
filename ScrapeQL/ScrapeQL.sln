@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.26430.16
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrapeQL", "ScrapeQL\ScrapeQL.csproj", "{E629ECE3-8355-48F6-B97B-C7CB278CF19B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrapeQLRepl", "ScrapeQLRepl\ScrapeQLRepl.csproj", "{AD9540B5-A3B1-425C-8340-4CFE96D4BAAD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{E629ECE3-8355-48F6-B97B-C7CB278CF19B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E629ECE3-8355-48F6-B97B-C7CB278CF19B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E629ECE3-8355-48F6-B97B-C7CB278CF19B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AD9540B5-A3B1-425C-8340-4CFE96D4BAAD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AD9540B5-A3B1-425C-8340-4CFE96D4BAAD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AD9540B5-A3B1-425C-8340-4CFE96D4BAAD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AD9540B5-A3B1-425C-8340-4CFE96D4BAAD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -25,9 +25,8 @@
 #region Using directives
 using Monad;
 using Monad.Parsec;
-using Monad.Parsec.Token;
-using Monad.Parsec.Expr;
 using Monad.Parsec.Language;
+using Monad.Parsec.Token;
 using Monad.Utility;
 using System;
 using System.Linq;
@@ -56,8 +55,9 @@ namespace ScrapeQL
         //Parser<WhereExpression> ParserWhereExpressions;
         Parser<StringLiteral> ParserString;
         Parser<Query> ParserQuery;
+        Parser<Term> ParserWhereExpression;
         //Parser<ImmutableList<Query>> Parser;
-        Parser<ImmutableList<Term>> TopLevel;
+        Parser<ImmutableList<Query>> TopLevel;
 
         #endregion
 
@@ -66,7 +66,7 @@ namespace ScrapeQL
             BuildScrapeQLParser();
         }
 
-        public ParserResult<ImmutableList<Term>> Parse(string input)
+        public ParserResult<ImmutableList<Query>> Parse(string input)
         {
             return TopLevel.Parse(input);
         }
@@ -126,10 +126,26 @@ namespace ScrapeQL
                             from src in strings
                             from __ in reserved("AS")
                             from alias in identifier
-                            select new LoadQuery(alias,src) as Term;
+                            select new LoadQuery(alias,src) as Query;
+            
+            var SelectQuery = from _ in reserved("SELECT")
+                              from objs in strings //TODO: 
+                              from __ in reserved("AS")
+                              from alias in identifier
+                              from ___ in reserved("FROM")
+                              from src in identifier
+                              //from whereClasuses in Prim.Try(ParserWhereExpression)
+                              select new SelectQuery() as Query;
+
+            var Conditional = from sq in reserved("TO")
+                              select sq; //TODO: Conditions
+            
+            ParserWhereExpression = from _ in reserved("WHERE")
+                              from clauses in Prim.Many1(Conditional)
+                              select new WhereExpression() as Term; //TODO: Return enumarable conditions
 
             TopLevel = from ts in Prim.Many1(
-                                from lq in LoadQuery
+                                from lq in Prim.Choice(LoadQuery, SelectQuery)
                                 select lq
                             )
                            select ts;
@@ -171,16 +187,16 @@ namespace ScrapeQL
             -- LOAD Path,URL AS identifier
             
             -- WRITE identifier TO pathstring
-            
-            -- SELECT str
-               FROM identifier
-               Where [conditions]
+             
+            -- SELECT str AS identifier 
+               FROM identifier 
+               [Where Select = "asds"]
 
            */
 
         #endregion
 
-        #region Ast  
+        #region AST
         class ScrapeQL : EmptyDef
         {
             public ScrapeQL()
@@ -188,6 +204,11 @@ namespace ScrapeQL
                 ReservedNames = new string[] { "SELECT", "LOAD", "WRITE", "FROM", "WHERE", "AS", "FOR", "IN", "TO" };
                 CommentLine = "--";
             }
+        }
+
+        public class Conditional
+        {
+
         }
 
 
@@ -244,6 +265,9 @@ namespace ScrapeQL
         }
         public class SelectQuery : Query
         {
+            public readonly StringLiteralToken selector;
+            //public readonly 
+            
             public SelectQuery(SrcLoc location = null) : base(location)
             {
             }
@@ -253,7 +277,7 @@ namespace ScrapeQL
                 throw new NotImplementedException();
             }
         }
-        public class LoadQuery : Term
+        public class LoadQuery : Query
         {
             public readonly IdentifierToken Alias;
             public readonly StringLiteralToken Source;
@@ -261,6 +285,11 @@ namespace ScrapeQL
             {
                 Alias = alias;
                 Source = source;
+            }
+
+            public override void Run()
+            {
+                throw new NotImplementedException();
             }
         }
 
@@ -272,6 +301,11 @@ namespace ScrapeQL
             {
                 Alias = alias;
                 Source = source;
+            }
+
+            public override void Run()
+            {
+                throw new NotImplementedException();
             }
         }
 
@@ -300,10 +334,13 @@ namespace ScrapeQL
                 Value = value;
             }
         }
-
-        public abstract class WhereExpression
+        
+        public class WhereExpression : Term
         {
+            public WhereExpression(SrcLoc location = null) : base(location)
+            {
 
+            }
         }
 
         #endregion

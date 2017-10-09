@@ -109,12 +109,12 @@ namespace ScrapeQLCLI
         static void Main(string[] args)
         {
             TEST();
-
+            string inputfile;
             var parameters = new OptionSet()
             {
                 { "v|version", "print version info", x => DoNothing() },
                 { "o|output", "output file name", x => DoNothing() },
-                { "i|input", "input file name", x => DoNothing() },
+                { "i|input", "input file name", x => inputfile = x },
                 { "a|append", "append to output file?", x => DoNothing() },
                 { "h|help", "print help", x => DoNothing() }
 

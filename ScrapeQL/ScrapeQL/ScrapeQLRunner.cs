@@ -17,12 +17,14 @@ namespace ScrapeQL
             scope = new Dictionary<string, HtmlNode>();
         }
 
-        public void RunQuery(ScrapeQLParser.Query q)
+        public void RunQuery(Query query)
         {
-            if(q is ScrapeQLParser.LoadQuery)
-                RunLoadQuery((ScrapeQLParser.LoadQuery) q);
-            if (q is ScrapeQLParser.WriteQuery)
-                RunWriteQuery((ScrapeQLParser.WriteQuery)q);
+            if(query is LoadQuery)
+                RunLoadQuery(query as LoadQuery);
+            if(query is WriteQuery)
+                RunWriteQuery(query as WriteQuery);
+            if (query is SelectQuery)
+                RunSelectQuery(query as SelectQuery);
         }
 
         public void PrintScope()
@@ -33,27 +35,30 @@ namespace ScrapeQL
             }
         }
         
-        private void RunLoadQuery(ScrapeQLParser.LoadQuery lq)
+        private void RunLoadQuery(LoadQuery lq)
         {
-            //Console.WriteLine(lq.Source.Value.AsString());
-            Console.WriteLine(lq.Source.Value.AsString());
             var uri = new Uri(lq.Source.ToString());
             var web = new HtmlWeb();
-            var doc = web.Load(uri.AbsolutePath);
-            scope.Add(lq.Alias.Value.AsString(), doc.DocumentNode);
+            var doc = web.Load(uri.AbsoluteUri);
+            scope.Add(lq.Alias, doc.DocumentNode);
         }
 
-        private void RunWriteQuery(ScrapeQLParser.WriteQuery wq)
+        private void RunSelectQuery(SelectQuery sq)
+        {
+
+        }
+
+        private void RunWriteQuery(WriteQuery wq)
         {
             HtmlNode node;
-            bool inscope = scope.TryGetValue(wq.Alias.Value.AsString(),out node);
+            bool inscope = scope.TryGetValue(wq.Alias,out node);
             if (inscope)
             {
-                node.WriteTo(XmlWriter.Create(wq.OutPath.Value.AsString()));
+                node.WriteTo(XmlWriter.Create(wq.OutPath));
             }
             else
             {
-                Console.WriteLine(wq.Alias.Value.AsString()+" is not in scope");
+                Console.WriteLine(wq.Alias+" is not in scope");
                 //TODO: Wrte error to Console include codeloacation
             }
         }

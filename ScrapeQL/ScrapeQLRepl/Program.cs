@@ -73,46 +73,11 @@ namespace ScrapeQLCLI
             p.WriteOptionDescriptions(Console.Out);
         }
 
-        static void TEST()
-        {
-            //TODO: Remove this when no longer needed;
-            ScrapeQLParser parser = new ScrapeQL.ScrapeQLParser();
-            ScrapeQLRunner runner = new ScrapeQLRunner();
-
-            Console.Write("ScrapeQL> ");
-            using (StreamReader sr = new StreamReader(Console.OpenStandardInput()))
-            {
-                String line;
-                Dictionary<String, HtmlNode> identifiers = new Dictionary<string, HtmlNode>();
-                while ((line = sr.ReadLine()) != null)
-                {
-                    
-                    var result = parser.Parse(line);
-                    if (result.IsFaulted)
-                    {
-                        Console.WriteLine("Error: "+result.Errors.First().Message);
-                        Console.WriteLine("Expected: "+result.Errors.First().Expected);
-                        Console.WriteLine("In Line: " + result.Errors.First().Location.Line+" In Column: "+result.Errors.First().Location.Column);
-                    }
-                    else
-                    {
-                        var queries = result.Value.First().Item1;
-                        var rest = result.Value.Head().Item2.AsString();
-                        foreach(ScrapeQLParser.Query q in queries)
-                            runner.RunQuery(q);
-
-                        runner.PrintScope();
-                    }
-                    Console.Write("ScrapeQL> ");
-                }
-            }
-
-            Environment.Exit((int)ExitCodes.Success);
-        }
-
         static void Main(string[] args)
         {
-            TEST();
+            ScrapeQLREPL repl = new ScrapeQLREPL();
+            repl.Run();
+
             string inputfile;
             bool debugMode;
             var parameters = new OptionSet()

@@ -25,8 +25,6 @@
 #region Using directives
 using Monad;
 using Monad.Parsec;
-using Monad.Parsec.Language;
-using Monad.Parsec.Token;
 using Monad.Utility;
 using System;
 using System.Linq;
@@ -57,7 +55,8 @@ namespace ScrapeQL
         Parser<Query> ParserQuery;
         Parser<Term> ParserWhereExpression;
         //Parser<ImmutableList<Query>> Parser;
-        Parser<ImmutableList<Query>> TopLevel;
+        Parser<Query> TopLevel;
+        Parser<ImmutableList<Query>> TopLevelMany;
 
         #endregion
 
@@ -68,13 +67,18 @@ namespace ScrapeQL
 
         public ParserResult<ImmutableList<Query>> Parse(string input)
         {
-            return TopLevel.Parse(input);
+            return TopLevelMany.Parse(input);
+        }
+
+        public Parser<Query> TopLevelParser()
+        {
+            return TopLevel;
         }
 
         #region Parser
         public void BuildScrapeQLParser(){
 
-            var def = new ScrapeQL();
+            var def = new ScrapeQLDef();
             var lexer = Tok.MakeTokenParser<Term>(def);
             var reserved = lexer.Reserved;
             var identifier = lexer.Identifier;
@@ -100,19 +104,19 @@ namespace ScrapeQL
 
             ParserRegularExpression = (from b in Prim.Character('\\')
                                  from r in Prim.Character('r')
-                                 from re in ParserString
-                                 select new RegularExpression(re))
+                                 from re in strings
+                                 select new RegularExpression(re.Value.AsString()))
                                  .Fail("Regex");
 
-            ParserString = (from chars in Prim.Between(Prim.Character('"'), Prim.Character('"'), Prim.Many1(Prim.Satisfy(c => c != '"')))
-                            select new StringLiteral(chars))
-                            .Fail("string");
+            /*ParserString = (from chars in Prim.Between(Prim.Character('"'), Prim.Character('"'), Prim.Many1(Prim.Satisfy(c => c != '"')))
+                            select new StringLiteral(chars.AsString()))
+                            .Fail("string");*/
 
-            ParserStringList = (from strs in Prim.SepBy1(ParserString, Prim.Character(','))
+            /*ParserStringList = (from strs in Prim.SepBy1(ParserString, Prim.Character(','))
                                select strs)
-                               .Fail("string list");
+                               .Fail("string list");*/
 
-            ParserKeyPair = (from left in ParserString
+            /*ParserKeyPair = (from left in ParserString
                        from c in Prim.Character(':')
                        from right in ParserString
                        select Tuple.Create(left, right))
@@ -120,28 +124,28 @@ namespace ScrapeQL
 
             ParserDictionary = (from ps in Prim.SepBy1(ParserKeyPair, Prim.Character(','))
                                select ps)
-                               .Fail("dictionary");
+                               .Fail("dictionary");*/
 
-            var LoadQuery = from _ in reserved("LOAD")
+            var ParserLoadQuery = from _ in reserved("LOAD")
                             from src in strings
                             from __ in reserved("AS")
                             from alias in identifier
-                            select new LoadQuery(alias,src) as Query;
+                            select new LoadQuery(alias.Value.AsString(), src.Value.AsString(), _.Location) as Query;
 
-            var WriteQuery = from _ in reserved("WRITE")
+            var ParserWriteQuery = from _ in reserved("WRITE")
                              from alias in identifier
                              from __ in reserved("TO")
                              from src in strings
-                             select new WriteQuery(alias,src) as Query;
+                             select new WriteQuery(alias.Value.AsString(), src.Value.AsString(), _.Location) as Query;
 
-            var SelectQuery = from _ in reserved("SELECT")
-                              from objs in strings //TODO: 
+            var ParserSelectQuery = from _ in reserved("SELECT")
+                              from objs in strings
                               from __ in reserved("AS")
                               from alias in identifier
                               from ___ in reserved("FROM")
                               from src in identifier
                               //from whereClasuses in Prim.Try(ParserWhereExpression)
-                              select new SelectQuery() as Query;
+                              select new SelectQuery(_.Location) as Query;
 
             var Conditional = from sq in reserved("TO")
                               select sq; //TODO: Conditions
@@ -150,35 +154,13 @@ namespace ScrapeQL
                               from clauses in Prim.Many1(Conditional)
                               select new WhereExpression() as Term; //TODO: Return enumarable conditions
 
-            TopLevel = from ts in Prim.Many1(
-                                from lq in Prim.Choice(LoadQuery, SelectQuery, WriteQuery)
+            TopLevel = Prim.Choice(ParserLoadQuery, ParserSelectQuery, ParserWriteQuery);
+
+            TopLevelMany = from ts in Prim.Many1(
+                                from lq in TopLevel
                                 select lq
                             )
-                           select ts;
-
-            /*ParserQuery = (from k in ParserKeyword
-                           where k.IsEqualTo("select")
-                           from selects in ParserStringList
-                           from k2 in ParserKeyword
-                           where k2.IsEqualTo("from")
-                           from source in ParserString
-                           select new SelectQuery() as Query)
-                           | (from k in ParserKeyword
-                              where k.IsEqualTo("load")
-                              from src in ParserString
-                              from k2 in ParserKeyword
-                              where k2.IsEqualTo("as")
-                              from ident in ParserString
-                              select new LoadQuery(ident, src) as Query)
-                            | (from k in ParserKeyword
-                               where k.IsEqualTo("write")
-                               from ident in ParserString
-                               from k2 in ParserKeyword
-                               where k2.IsEqualTo("to")
-                               from src in ParserString
-                               select new WriteQuery(ident, src) as Query)
-                            .Fail("Failed to Parse Query.", "Expected either a SelectQuery, a LoadQuery or a WriteQuery");*/
-            
+                           select ts; 
         }
 
         /*
@@ -202,136 +184,6 @@ namespace ScrapeQL
 
         #endregion
 
-        #region AST
-        class ScrapeQL : EmptyDef
-        {
-            public ScrapeQL()
-            {
-                ReservedNames = new string[] { "SELECT", "LOAD", "WRITE", "FROM", "WHERE", "AS", "FOR", "IN", "TO" };
-                CommentLine = "--";
-            }
-        }
-
-        public class Conditional
-        {
-
-        }
-
-
-        public class StringLiteral 
-        {
-            public readonly ImmutableList<ParserChar> Value;
-            public StringLiteral(ImmutableList<ParserChar> value)
-            {
-                Value = value;
-            }
-        }
-
-        public class LiteralList
-        {
-            public readonly ImmutableList<StringLiteral> Values;
-            public LiteralList(ImmutableList<StringLiteral> values)
-            {
-                Values = values;
-            }
-        }
-
-        public class LiteralDictionary
-        {
-            public readonly ImmutableList<Tuple<StringLiteral,StringLiteral>> Values;
-            public LiteralDictionary(ImmutableList<Tuple<StringLiteral, StringLiteral>> values)
-            {
-                Values = values;
-            }
-        }
-
-        public class Identifier : Term
-        {
-            public readonly IdentifierToken Id;
-            public Identifier(IdentifierToken id, SrcLoc location = null) : base(location)
-            {
-                Id = id;
-            }
-        }
-
-        public class Term : Token
-        {
-            public Term(SrcLoc location = null) : base(location)
-            {
-            }
-        }
-
-        public abstract class Query : Token
-        {
-            public Query(SrcLoc location = null) : base(location)
-            {
-            }
-        }
-        public class SelectQuery : Query
-        {
-            public readonly StringLiteralToken selector;
-            
-            public SelectQuery(SrcLoc location = null) : base(location)
-            {
-            }
-        }
-        public class LoadQuery : Query
-        {
-            public readonly IdentifierToken Alias;
-            public readonly StringLiteralToken Source;
-            public LoadQuery(IdentifierToken alias, StringLiteralToken source, SrcLoc location = null) : base(location)
-            {
-                Alias = alias;
-                Source = source;
-            }
-        }
-
-        public class WriteQuery : Query
-        {
-            public readonly IdentifierToken Alias;
-            public readonly StringLiteralToken OutPath;
-            public WriteQuery(IdentifierToken alias, StringLiteralToken source, SrcLoc location = null) : base(location)
-            {
-                Alias = alias;
-                OutPath = source;
-            }
-        }
-
-        
-        public abstract class Selector { }
-        public class XPathSelector : Selector
-        {
-            public readonly string Xpath;
-
-            public XPathSelector(string xpath)
-            {
-                Xpath = xpath;
-            }
-        }
-
-        public abstract class AttributeSelector : Selector
-        {
-
-        }
-
-        public class RegularExpression
-        {
-            public readonly StringLiteral Value;
-            public RegularExpression(StringLiteral value)
-            {
-                Value = value;
-            }
-        }
-        
-        public class WhereExpression : Term
-        {
-            public WhereExpression(SrcLoc location = null) : base(location)
-            {
-
-            }
-        }
-
-        #endregion
 
         #region ParserHelpers
 

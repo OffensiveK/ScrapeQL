@@ -127,7 +127,13 @@ namespace ScrapeQL
                             from __ in reserved("AS")
                             from alias in identifier
                             select new LoadQuery(alias,src) as Query;
-            
+
+            var WriteQuery = from _ in reserved("WRITE")
+                             from alias in identifier
+                             from __ in reserved("TO")
+                             from src in strings
+                             select new WriteQuery(alias,src) as Query;
+
             var SelectQuery = from _ in reserved("SELECT")
                               from objs in strings //TODO: 
                               from __ in reserved("AS")
@@ -145,7 +151,7 @@ namespace ScrapeQL
                               select new WhereExpression() as Term; //TODO: Return enumarable conditions
 
             TopLevel = from ts in Prim.Many1(
-                                from lq in Prim.Choice(LoadQuery, SelectQuery)
+                                from lq in Prim.Choice(LoadQuery, SelectQuery, WriteQuery)
                                 select lq
                             )
                            select ts;
@@ -260,21 +266,13 @@ namespace ScrapeQL
             public Query(SrcLoc location = null) : base(location)
             {
             }
-
-            public abstract void Run();
         }
         public class SelectQuery : Query
         {
             public readonly StringLiteralToken selector;
-            //public readonly 
             
             public SelectQuery(SrcLoc location = null) : base(location)
             {
-            }
-
-            public override void Run()
-            {
-                throw new NotImplementedException();
             }
         }
         public class LoadQuery : Query
@@ -286,26 +284,16 @@ namespace ScrapeQL
                 Alias = alias;
                 Source = source;
             }
-
-            public override void Run()
-            {
-                throw new NotImplementedException();
-            }
         }
 
         public class WriteQuery : Query
         {
-            public readonly StringLiteral Alias;
-            public readonly StringLiteral Source;
-            public WriteQuery(StringLiteral alias, StringLiteral source, SrcLoc location) : base(location)
+            public readonly IdentifierToken Alias;
+            public readonly StringLiteralToken OutPath;
+            public WriteQuery(IdentifierToken alias, StringLiteralToken source, SrcLoc location = null) : base(location)
             {
                 Alias = alias;
-                Source = source;
-            }
-
-            public override void Run()
-            {
-                throw new NotImplementedException();
+                OutPath = source;
             }
         }
 

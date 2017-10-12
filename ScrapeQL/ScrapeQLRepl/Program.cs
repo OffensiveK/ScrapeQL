@@ -32,7 +32,7 @@ using NDesk.Options;
 using ScrapeQL;
 using System.IO;
 using HtmlAgilityPack;
-using static ScrapeQL.ScrapeQLParser;
+using Monad.Utility;
 #endregion
 
 namespace ScrapeQLCLI
@@ -76,7 +76,8 @@ namespace ScrapeQLCLI
         static void TEST()
         {
             //TODO: Remove this when no longer needed;
-            ScrapeQLParser p = new ScrapeQL.ScrapeQLParser();
+            ScrapeQLParser parser = new ScrapeQL.ScrapeQLParser();
+            ScrapeQLRunner runner = new ScrapeQLRunner();
 
             Console.Write("ScrapeQL> ");
             using (StreamReader sr = new StreamReader(Console.OpenStandardInput()))
@@ -86,7 +87,7 @@ namespace ScrapeQLCLI
                 while ((line = sr.ReadLine()) != null)
                 {
                     
-                    var result = p.Parse(line);
+                    var result = parser.Parse(line);
                     if (result.IsFaulted)
                     {
                         Console.WriteLine("Error: "+result.Errors.First().Message);
@@ -95,9 +96,12 @@ namespace ScrapeQLCLI
                     }
                     else
                     {
-                        var query = result.Value.First().Item1;
-                        var rest = result.Value.First().Item2;
-                        Console.WriteLine();
+                        var queries = result.Value.First().Item1;
+                        var rest = result.Value.Head().Item2.AsString();
+                        foreach(ScrapeQLParser.Query q in queries)
+                            runner.RunQuery(q);
+
+                        runner.PrintScope();
                     }
                     Console.Write("ScrapeQL> ");
                 }
@@ -110,13 +114,15 @@ namespace ScrapeQLCLI
         {
             TEST();
             string inputfile;
+            bool debugMode;
             var parameters = new OptionSet()
             {
                 { "v|version", "print version info", x => DoNothing() },
                 { "o|output", "output file name", x => DoNothing() },
                 { "i|input", "input file name", x => inputfile = x },
                 { "a|append", "append to output file?", x => DoNothing() },
-                { "h|help", "print help", x => DoNothing() }
+                { "h|help", "print help", x => DoNothing() },
+                { "d|debug", "debug mode", x => debugMode = true }
 
             };
 

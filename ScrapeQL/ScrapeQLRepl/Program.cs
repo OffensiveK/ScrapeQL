@@ -37,10 +37,10 @@ using Monad.Utility;
 
 namespace ScrapeQLCLI
 {
-    class ScrapeQLShell
+    class ScrapeQLCLI
     {
         [Flags]
-        enum ExitCodes : int
+        public enum ExitCodes : int
         {
             //TODO: Make real exit codes
             Success = 0,
@@ -48,19 +48,6 @@ namespace ScrapeQLCLI
             Code3 = 2,
             Code4 = 4
             //..
-        }
-
-
-        public ScrapeQLShell(string[] args)
-        {
-            try
-            {
-
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-            }
         }
 
         static void DoNothing()

@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Monad;
 
 namespace ScrapeQL
 {
@@ -30,6 +31,8 @@ namespace ScrapeQL
         {
             ReservedNames = new string[] { "SELECT", "LOAD", "WRITE", "FROM", "WHERE", "AS", "FOR", "IN", "TO" };
             CommentLine = "--";
+            CommentStart = "/*";
+            CommentEnd = "*/";
         }
     }
 
@@ -37,16 +40,7 @@ namespace ScrapeQL
     {
 
     }
-
-
-    public class StringLiteral
-    {
-        public readonly String Value;
-        public StringLiteral(String value)
-        {
-            Value = value;
-        }
-    }
+    
     /*
     public class LiteralList
     {
@@ -73,13 +67,38 @@ namespace ScrapeQL
 
         }
     }
-
-    public class Identifier : Term
+    /*
+    public class ListIdentifierToken : Term
     {
-        public readonly String Id;
-        public Identifier(String id, SrcLoc location = null) : base(location)
+        ImmutableList<IdentifierToken> Identifiers;
+        public ListIdentifierToken(ImmutableList<IdentifierToken> identifiers,SrcLoc location = null) : base(location)
         {
-            Id = id;
+            Identifiers = identifiers;
+        }
+    }
+
+    public class ListLiteralStringToken : Term
+    {
+        ImmutableList<StringLiteralToken> Strings;
+        public ListLiteralStringToken(ImmutableList<StringLiteralToken> strings, SrcLoc location = null) : base(location)
+        {
+            Strings = strings;
+        }
+    }*/
+
+    public class TermError
+    {
+        public String ErrorMessage;
+        public SrcLoc Location;
+
+        public TermError(String errormessage, SrcLoc location)
+        {
+            ErrorMessage = errormessage;
+        }
+
+        public String ErrorReport()
+        {
+            return "";
         }
     }
 
@@ -88,35 +107,68 @@ namespace ScrapeQL
         public Query(SrcLoc location = null) : base(location)
         {
         }
+
+        public abstract Option<TermError> Check();
     }
 
     public class SelectQuery : Query
     {
-        public readonly StringLiteralToken selector;
+        public readonly StringLiteralToken Selector;
+        public readonly IdentifierToken Alias;
+        public readonly IdentifierToken Source;
 
-        public SelectQuery(SrcLoc location = null) : base(location)
+        public SelectQuery(StringLiteralToken selector, IdentifierToken alias, IdentifierToken source, SrcLoc location = null) : base(location)
         {
+            Selector = selector;
+            Alias = alias;
+            Source = source;
+        }
+
+        public override Option<TermError> Check()
+        {
+            return Option.Mempty<TermError>();
         }
     }
     public class LoadQuery : Query
     {
-        public readonly String Alias;
-        public readonly String Source;
-        public LoadQuery(String alias, String source, SrcLoc location = null) : base(location)
+        public readonly ImmutableList<IdentifierToken> Aliases;
+        public readonly ImmutableList<StringLiteralToken> Sources;
+        public LoadQuery(ImmutableList<IdentifierToken> aliases, ImmutableList<StringLiteralToken> sources, SrcLoc location = null) : base(location)
         {
-            Alias = alias;
-            Source = source;
+            Aliases = aliases;
+            Sources = sources;
+        }
+
+        public override Option<TermError> Check()
+        {
+            if (Aliases.Length < Sources.Length)
+            {
+                TermError t = new TermError("Not enough Aliases.",Aliases.First().Location);
+                return () => t.ToOption<TermError>();
+            }
+            if (Aliases.Length > Sources.Length)
+            {
+                TermError t = new TermError("Too many Aliases.", Aliases.First().Location);
+                return () => t.ToOption<TermError>();
+            }
+            return Option.Mempty<TermError>();
         }
     }
 
     public class WriteQuery : Query
     {
-        public readonly String Alias;
-        public readonly String OutPath;
-        public WriteQuery(String alias, String source, SrcLoc location = null) : base(location)
+        public readonly IdentifierToken Alias;
+        public readonly StringLiteralToken Destination;
+        public WriteQuery(IdentifierToken alias, StringLiteralToken destination, SrcLoc location = null) : base(location)
         {
             Alias = alias;
-            OutPath = source;
+            Destination = destination;
+        }
+
+        public override Option<TermError> Check()
+        {
+            //return String.Format("LOAD [ Sources: {0}; Aliases: {1}; ]", listSources, listAliases);
+            return Option.Mempty<TermError>();
         }
     }
 

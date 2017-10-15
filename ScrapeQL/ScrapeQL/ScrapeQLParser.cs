@@ -26,6 +26,7 @@
 using Monad;
 using Monad.Parsec;
 using Monad.Utility;
+using Monad.Parsec.Token;
 using System;
 using System.Linq;
 #endregion
@@ -43,17 +44,16 @@ namespace ScrapeQL
         public enum Format { JSON, XML, CSV };
 
         #region Fields
-        Parser<ImmutableList<ParserChar>> ParserSymbol;
-        Parser<ImmutableList<ParserChar>> ParserIdentifier;
-        Parser<ImmutableList<ParserChar>> ParserKeyword;
-        Parser<RegularExpression> ParserRegularExpression;
-        Parser<ImmutableList<StringLiteral>> ParserStringList;
-        Parser<Tuple<StringLiteral, StringLiteral>> ParserKeyPair;
-        Parser<ImmutableList<Tuple<StringLiteral,StringLiteral>>> ParserDictionary;
+        //Parser<ImmutableList<ParserChar>> ParserSymbol;
+        //Parser<ImmutableList<ParserChar>> ParserIdentifier;
+        //Parser<ImmutableList<ParserChar>> ParserKeyword;
+        //Parser<RegularExpression> ParserRegularExpression;
+        //Parser<ImmutableList<StringLiteralToken>> ParserListLiteralStringToken;
+        //Parser<Tuple<StringLiteral, StringLiteral>> ParserKeyPair;
+        //Parser<ImmutableList<Tuple<StringLiteral,StringLiteral>>> ParserDictionary;
         //Parser<WhereExpression> ParserWhereExpressions;
-        Parser<StringLiteral> ParserString;
-        Parser<Query> ParserQuery;
-        Parser<Term> ParserWhereExpression;
+        //Parser<Query> ParserQuery;
+        //Parser<Term> ParserWhereExpression;
         //Parser<ImmutableList<Query>> Parser;
         Parser<Query> TopLevel;
         Parser<ImmutableList<Query>> TopLevelMany;
@@ -84,37 +84,28 @@ namespace ScrapeQL
             var identifier = lexer.Identifier;
             var strings = lexer.StringLiteral;
 
+            var ParserComma = from _ in Prim.WhiteSpace()
+                              from c in Prim.Character(',')
+                              from __ in Prim.WhiteSpace()
+                              select c;
 
-            ParserSymbol = from w in Prim.WhiteSpace()
-                 from c in Prim.Letter()
-                 from cs in Prim.Many(Prim.LetterOrDigit())
-                 select c.Cons(cs);
-
-
-            /*ParserIdentifier = (from s in ParserSymbol
-                          where !Helper.InEnumCaseless<Keyword>(s.ToString())
-                          select s)
-                          .Fail("identifier");*/
-            
-
-            ParserKeyword = (from s in ParserSymbol
-                             where Helper.InEnumCaseless<Keyword>(s.ToString())
-                             select s)
-                             .Fail("keyword");
-
-            ParserRegularExpression = (from b in Prim.Character('\\')
+            var ParserRegularExpression = (from b in Prim.Character('\\')
                                  from r in Prim.Character('r')
                                  from re in strings
                                  select new RegularExpression(re.Value.AsString()))
                                  .Fail("Regex");
 
-            /*ParserString = (from chars in Prim.Between(Prim.Character('"'), Prim.Character('"'), Prim.Many1(Prim.Satisfy(c => c != '"')))
-                            select new StringLiteral(chars.AsString()))
-                            .Fail("string");*/
+            var ParserListLiteralStringToken = (from strs in Prim.SepBy(
+                                                    strings,
+                                                    ParserComma
+                                                    )
+                                               select strs);
 
-            /*ParserStringList = (from strs in Prim.SepBy1(ParserString, Prim.Character(','))
-                               select strs)
-                               .Fail("string list");*/
+            var ParserListIdentifierToken = (from strs in Prim.SepBy(
+                                                    identifier,
+                                                    ParserComma
+                                                    )
+                                                select strs);
 
             /*ParserKeyPair = (from left in ParserString
                        from c in Prim.Character(':')
@@ -127,30 +118,30 @@ namespace ScrapeQL
                                .Fail("dictionary");*/
 
             var ParserLoadQuery = from _ in reserved("LOAD")
-                            from src in strings
-                            from __ in reserved("AS")
-                            from alias in identifier
-                            select new LoadQuery(alias.Value.AsString(), src.Value.AsString(), _.Location) as Query;
+                                  from sources in ParserListLiteralStringToken
+                                  from __ in reserved("AS")
+                                  from aliases in ParserListIdentifierToken
+                                  select new LoadQuery(aliases, sources, _.Location) as Query;
 
             var ParserWriteQuery = from _ in reserved("WRITE")
                              from alias in identifier
                              from __ in reserved("TO")
                              from src in strings
-                             select new WriteQuery(alias.Value.AsString(), src.Value.AsString(), _.Location) as Query;
+                             select new WriteQuery(alias, src, _.Location) as Query;
 
             var ParserSelectQuery = from _ in reserved("SELECT")
-                              from objs in strings
+                              from selector in strings
                               from __ in reserved("AS")
                               from alias in identifier
                               from ___ in reserved("FROM")
                               from src in identifier
                               //from whereClasuses in Prim.Try(ParserWhereExpression)
-                              select new SelectQuery(_.Location) as Query;
+                              select new SelectQuery(selector, src, alias, _.Location) as Query;
 
             var Conditional = from sq in reserved("TO")
                               select sq; //TODO: Conditions
             
-            ParserWhereExpression = from _ in reserved("WHERE")
+            var ParserWhereExpression = from _ in reserved("WHERE")
                               from clauses in Prim.Many1(Conditional)
                               select new WhereExpression() as Term; //TODO: Return enumarable conditions
 

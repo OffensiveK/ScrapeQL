@@ -43,7 +43,7 @@ namespace ScrapeQLCLI
     class ScrapeQLREPL
     {
         [Flags]
-        public enum Setting { Verbose = 1, PrintScape = 2, PrintDebug = 4 };
+        public enum Setting { Verbose = 1, PrintScope = 2, PrintDebug = 4 };
 
         #region Fields
         #endregion
@@ -73,13 +73,13 @@ namespace ScrapeQLCLI
             }
         }
 
-        class Option : ReplParseObject
+        class Command : ReplParseObject
         {
-            public string option;
+            public string value;
             public ImmutableList<string> parameters;
-            public Option(String option, ImmutableList<string> parameters, SrcLoc location) : base(location)
+            public Command(String option, ImmutableList<string> parameters, SrcLoc location) : base(location)
             {
-                this.option = option;
+                this.value = option;
                 this.parameters = parameters;
             }
         }
@@ -95,24 +95,25 @@ namespace ScrapeQLCLI
 
         private void BuildReplParser()
         {
-            var ParserParameter = Prim.Many1(Prim.LetterOrDigit());
+            var ParserParameter = Prim.Many1(Prim.Item());
 
             var ParserQuery = from query in parser.TopLevelParser()
                               select new QueryContainer(query) as ReplParseObject;
 
-            var ParserOption = from _ in Prim.Character(':')
+            var ParserCommand = from _ in Prim.Character(':')
                                where _.Location.Column == 1
                                from option in Prim.Many1(Prim.Letter())
                                from __ in Prim.SimpleSpace()
                                from parameters in Prim.SepBy(ParserParameter, Prim.SimpleSpace())
-                               select new Option(option.AsString(),parameters.AsStrings(), _.Location) as ReplParseObject;
+                               select new Command(option.AsString(),parameters.AsStrings(), _.Location) as ReplParseObject;
 
 
-            replParser = from ts in Prim.Many1(
-                             from lq in Prim.Choice(ParserOption, ParserQuery)
+            replParser = (from ts in Prim.Many1(
+                             from lq in Prim.Choice(ParserCommand, ParserQuery)
                              select lq
                          )
-                         select ts;
+                         select ts)
+                         .Fail("Expected query or command");
         }
 
         #region Methods
@@ -124,46 +125,108 @@ namespace ScrapeQLCLI
             using (StreamReader sr = new StreamReader(Console.OpenStandardInput()))
             {
                 String line;
-                Dictionary<String, HtmlNode> identifiers = new Dictionary<string, HtmlNode>();
                 while ((line = sr.ReadLine()) != null)
                 {
-
-                    var result = replParser.Parse(line);
-                    if (result.IsFaulted)
-                    {
-                        Console.WriteLine("Error: " + result.Errors.First().Message);
-                        Console.WriteLine("Expected: " + result.Errors.First().Expected);
-                        Console.WriteLine("In Line: " + result.Errors.First().Location.Line + " In Column: " + result.Errors.First().Location.Column);
-                    }
-                    else
-                    {
-                        var queries = result.Value.First().Item1;
-                        var rest = result.Value.Head().Item2.AsString();
-                        foreach (ReplParseObject q in queries)
-                        {
-                            if (q is QueryContainer)
-                            {
-                                runner.RunQuery((q as QueryContainer).Query);
-                            }
-                            if(q is Option)
-                            {
-                                HandleOption(q as Option);
-                            }
-                            
-                        }
-                    }
+                    RunLine(line);
                     Console.Write(promptString);
                 }
             }
         }
 
-        private void HandleOption(Option option)
+        private void HandleCommand(Command command)
         {
-            foreach(string param in option.parameters)
-                Console.WriteLine(param);
-            if(option.option == "printscope")
+            //TODO: Add ":toggleverbose" to ...
+            switch (command.value)
             {
-                runner.PrintScope();
+                case "clear":
+                    Console.Clear();
+                    break;
+                case "exit":
+                    Environment.Exit((int)ScrapeQLCLI.ExitCodes.Success);
+                    break;
+                case "printscope":
+                    runner.PrintScope();
+                    break;
+                case "load":
+                    if (command.parameters.Length == 1)
+                    {
+                        String file = command.parameters.First();
+                        RunFromFile(file);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid amount of arguments for 'load'");
+                    }
+                    break;
+                case "printvar":
+                    if (command.parameters.Length == 1)
+                    {
+                        String name = command.parameters.First();
+                        runner.PrintVariable(name);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid amount of arguments for 'printvariable'");
+                    }
+                    break;
+                case "setprompt":
+                    if (command.parameters.Length == 1)
+                    {
+                        promptString = command.parameters.First();
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid amount of arguments for 'setpromt'");
+                    }
+                    break;
+                default:
+                    Console.WriteLine("Unknown command");
+                    break;
+            }
+        }
+
+        private void RunLine(String line)
+        {
+            var result = replParser.Parse(line);
+            if (result.IsFaulted)
+            {
+                Console.WriteLine("Error: " + result.Errors.First().Message);
+                Console.WriteLine("Expected: " + result.Errors.First().Expected);
+                Console.WriteLine("In Line: " + result.Errors.First().Location.Line + " In Column: " + result.Errors.First().Location.Column);
+            }
+            else
+            {
+                var queries = result.Value.First().Item1;
+                var rest = result.Value.Head().Item2.AsString();
+                foreach (ReplParseObject q in queries)
+                {
+                    if (q is QueryContainer)
+                    {
+                        runner.RunQuery((q as QueryContainer).Query);
+                    }
+                    if (q is Command)
+                    {
+                        HandleCommand(q as Command);
+                    }
+
+                }
+            }
+        }
+
+        private void RunFromFile(String src)
+        {
+            try
+            { 
+                using (StreamReader sr = new StreamReader(src))
+                {
+                    String line = sr.ReadToEnd();
+                    RunLine(line);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("The file could not be read:");
+                Console.WriteLine(e.Message);
             }
         }
     }

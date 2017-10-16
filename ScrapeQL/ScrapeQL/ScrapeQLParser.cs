@@ -84,7 +84,7 @@ namespace ScrapeQL
             var identifier = lexer.Identifier;
             var strings = lexer.StringLiteral;
 
-            var ParserComma = from _ in Prim.WhiteSpace()
+            var ParserComma = from _ in Prim.  ()
                               from c in Prim.Character(',')
                               from __ in Prim.WhiteSpace()
                               select c;
@@ -129,21 +129,29 @@ namespace ScrapeQL
                              from src in strings
                              select new WriteQuery(alias, src, _.Location) as Query;
 
+            var ParserStringSelector = from s in strings select new SelectorString(s,s.Location) as Selector;
+
+            var ParserAttributeSelector = from src in identifier
+                                          from xpath in Prim.Between(Prim.Character('['), Prim.Character(']'), strings)
+                                          select new AttributeSelector(src, xpath, src.Location) as Selector;
+
+            var Conditional = from sq in reserved("TO")
+                              select sq; //TODO: Conditions
+
+            var ParserWhereExpression = from _ in reserved("WHERE")
+                                        from clauses in Prim.Many1(Conditional)
+                                        select new WhereExpression() as Term; //TODO: Return enumarable conditions
+
             var ParserSelectQuery = from _ in reserved("SELECT")
-                              from selector in strings
+                              from selector in Prim.Choice(ParserStringSelector, ParserAttributeSelector)
                               from __ in reserved("AS")
                               from alias in identifier
                               from ___ in reserved("FROM")
                               from src in identifier
-                              //from whereClasuses in Prim.Try(ParserWhereExpression)
-                              select new SelectQuery(selector, src, alias, _.Location) as Query;
+                              from whereClasuses in Prim.Try(ParserWhereExpression)
+                              select new SelectQuery(selector, alias, src, _.Location) as Query;
 
-            var Conditional = from sq in reserved("TO")
-                              select sq; //TODO: Conditions
-            
-            var ParserWhereExpression = from _ in reserved("WHERE")
-                              from clauses in Prim.Many1(Conditional)
-                              select new WhereExpression() as Term; //TODO: Return enumarable conditions
+
 
             TopLevel = Prim.Choice(ParserLoadQuery, ParserSelectQuery, ParserWriteQuery);
 

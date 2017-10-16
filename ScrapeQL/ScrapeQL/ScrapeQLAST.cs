@@ -113,11 +113,11 @@ namespace ScrapeQL
 
     public class SelectQuery : Query
     {
-        public readonly StringLiteralToken Selector;
+        public readonly Selector Selector;
         public readonly IdentifierToken Alias;
         public readonly IdentifierToken Source;
 
-        public SelectQuery(StringLiteralToken selector, IdentifierToken alias, IdentifierToken source, SrcLoc location = null) : base(location)
+        public SelectQuery(Selector selector, IdentifierToken alias, IdentifierToken source, SrcLoc location = null) : base(location)
         {
             Selector = selector;
             Alias = alias;
@@ -173,20 +173,33 @@ namespace ScrapeQL
     }
 
 
-    public abstract class Selector { }
-    public class XPathSelector : Selector
+    public abstract class Selector : Token
     {
-        public readonly string Xpath;
+        public Selector(SrcLoc location) : base(location)
+        {
+        }
+    }
 
-        public XPathSelector(string xpath)
+    public class SelectorString : Selector
+    {
+        public readonly StringLiteralToken Xpath;
+
+        public SelectorString(StringLiteralToken xpath, SrcLoc location) : base(location)
         {
             Xpath = xpath;
         }
     }
 
-    public abstract class AttributeSelector : Selector
+    public class AttributeSelector : Selector
     {
+        public readonly StringLiteralToken Xpath;
+        public readonly IdentifierToken Source;
 
+        public AttributeSelector(IdentifierToken source, StringLiteralToken xpath, SrcLoc location) : base(location)
+        {
+            Xpath = xpath;
+            Source = source;
+        }
     }
 
     public class RegularExpression : Term

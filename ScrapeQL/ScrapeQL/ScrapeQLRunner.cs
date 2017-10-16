@@ -22,6 +22,8 @@ namespace ScrapeQL
 
         public void RunQuery(Query query)
         {
+
+
             if(query is LoadQuery)
                 RunLoadQuery(query as LoadQuery);
             if(query is WriteQuery)
@@ -89,14 +91,31 @@ namespace ScrapeQL
             bool inscope = scope.TryGetValue(sq.Source.Value.AsString(), out node);
             if (inscope)
             {
-                HtmlNode selected = node.SelectSingleNode(sq.Selector.Value.AsString());
-                if(selected != null)
+                Selector s = sq.Selector;
+                HtmlNode selected = null;
+                if(s is AttributeSelector)
                 {
-                    scope.Add(sq.Alias.Value.AsString(),selected);
+                    selected = node.SelectSingleNode((s as AttributeSelector).Xpath.Value.AsString());
+                    if (selected != null)
+                    {
+                        scope.Add(sq.Alias.Value.AsString(), selected);
+                    }
+                    else
+                    {
+                        Console.WriteLine(String.Format("Could not select: {0}", (s as AttributeSelector).Xpath.Value.AsString()));
+                    }
                 }
-                else
+                if(s is SelectorString)
                 {
-                    Console.WriteLine(String.Format("Could not select: {0}",sq.Selector.Value.AsString()));
+                    selected = node.SelectSingleNode((s as SelectorString).Xpath.Value.AsString());
+                    if (selected != null)
+                    {
+                        scope.Add(sq.Alias.Value.AsString(), selected);
+                    }
+                    else
+                    {
+                        Console.WriteLine(String.Format("Could not select: {0}", (s as SelectorString).Xpath.Value.AsString()));
+                    }
                 }
             }
             else

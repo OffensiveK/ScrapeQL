@@ -27,7 +27,7 @@ using HtmlAgilityPack;
 using Monad.Parsec;
 using Monad.Parsec.Token;
 using Monad.Utility;
-using ScrapeQL;
+using ScrapeQLCLI;
 using System;
 using System.Collections.Generic;
 using System.IO;

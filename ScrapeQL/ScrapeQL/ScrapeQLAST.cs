@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Monad;
 
-namespace ScrapeQL
+namespace ScrapeQLCLI
 {
     public static class ScrapeQLAST
     {

@@ -27,9 +27,9 @@
 
 using System;
 using System.Linq;
-using static ScrapeQL.ScrapeQLParser;
+using static ScrapeQLCLI.ScrapeQLParser;
 
-namespace ScrapeQL
+namespace ScrapeQLCLI
 {
     /// <summary>
     ///  

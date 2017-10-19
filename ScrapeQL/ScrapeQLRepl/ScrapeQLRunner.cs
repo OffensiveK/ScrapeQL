@@ -9,27 +9,33 @@ using Monad.Parsec;
 using Monad.Parsec.Token;
 using Monad;
 
-namespace ScrapeQL
+namespace ScrapeQLCLI
 {
     public class ScrapeQLRunner
     {
-        Dictionary<String, HtmlNode> scope;
+        Dictionary<String, ScrapeQLQueryable> scope;
 
         public ScrapeQLRunner()
         {
-            scope = new Dictionary<string, HtmlNode>();
+            scope = new Dictionary<string, ScrapeQLQueryable>();
         }
 
         public void RunQuery(Query query)
         {
-
-
-            if(query is LoadQuery)
-                RunLoadQuery(query as LoadQuery);
-            if(query is WriteQuery)
-                RunWriteQuery(query as WriteQuery);
-            if (query is SelectQuery)
-                RunSelectQuery(query as SelectQuery);
+            Option<TermError> te = query.Check();
+            if (te.HasValue())
+            {
+                Console.WriteLine(te.Value().ErrorMessage);
+            }
+            else
+            {
+                if (query is LoadQuery)
+                    RunLoadQuery(query as LoadQuery);
+                if (query is WriteQuery)
+                    RunWriteQuery(query as WriteQuery);
+                if (query is SelectQuery)
+                    RunSelectQuery(query as SelectQuery);
+            }
         }
 
         public void PrintScope()
@@ -42,12 +48,12 @@ namespace ScrapeQL
 
         public void PrintVariable(String identifier)
         {
-            HtmlNode node;
+            ScrapeQLQueryable node;
             bool inscope = scope.TryGetValue(identifier, out node);
             if (inscope)
             {
                 Console.WriteLine();
-                Console.WriteLine(node.OuterHtml);
+                Console.WriteLine(node.ToVariableInfoString());
             }
             else
             {
@@ -57,42 +63,34 @@ namespace ScrapeQL
         
         private void RunLoadQuery(LoadQuery lq)
         {
-            Option<TermError> te = lq.Check();
-            if (te.HasValue())
+            try
             {
-                Console.WriteLine(te.Value().ErrorMessage);
-            }
-            else
-            {
-                try
-                {
-                    var x = from StringLiteralToken source in lq.Sources
-                            from IdentifierToken ident in lq.Aliases
-                            select Tuple.Create(source, ident);
+                var x = from StringLiteralToken source in lq.Sources
+                        from IdentifierToken ident in lq.Aliases
+                        select Tuple.Create(source, ident);
 
-                    var web = new HtmlWeb();
-                    foreach (Tuple<StringLiteralToken, IdentifierToken> pair in x)
-                    {
-                        var uri = new Uri(pair.Item1.Value.AsString());
-                        var doc = web.Load(uri.AbsoluteUri);
-                        scope[pair.Item2.Value.AsString()] = doc.DocumentNode;
-                    }
-                }
-                catch (Exception e)
+                var web = new HtmlWeb();
+                foreach (Tuple<StringLiteralToken, IdentifierToken> pair in x)
                 {
-                    Console.WriteLine(e.Message);
+                    var uri = new Uri(pair.Item1.Value.AsString());
+                    var doc = web.Load(uri.AbsoluteUri);
+                    scope[pair.Item2.Value.AsString()] = doc.DocumentNode.ToIScrapeQLQueryable();
                 }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
             }
         }
 
         private void RunSelectQuery(SelectQuery sq)
         {
-            HtmlNode node;
+            ScrapeQLQueryable node;
             bool inscope = scope.TryGetValue(sq.Source.Value.AsString(), out node);
             if (inscope)
             {
                 Selector s = sq.Selector;
-                HtmlNode selected = null;
+                ScrapeQLQueryable selected = null;
                 if(s is AttributeSelector)
                 {
                     selected = node.SelectSingleNode((s as AttributeSelector).Xpath.Value.AsString());
@@ -126,11 +124,13 @@ namespace ScrapeQL
 
         private void RunWriteQuery(WriteQuery wq)
         {
-            HtmlNode node;
+            ScrapeQLQueryable node;
             bool inscope = scope.TryGetValue(wq.Alias.Value.AsString() ,out node);
             if (inscope)
             {
-                node.WriteTo(XmlWriter.Create(wq.Destination.Value.AsString()));
+                //Writer writer = new Writer();
+                //node.WriteTo(XmlWriter.Create(wq.Destination.Value.AsString()));
+                //node.WriteTo(wq.Destination.Value.AsString());
             }
             else
             {

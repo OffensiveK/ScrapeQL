@@ -51,9 +51,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IScrapeQLQueryable.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ScrapeQLParser.cs" />
     <Compile Include="ScrapeQLREPL.cs" />
+    <Compile Include="ScrapeQLRunner.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

@@ -29,7 +29,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NDesk.Options;
-using ScrapeQL;
+using ScrapeQLCLI;
 using System.IO;
 using HtmlAgilityPack;
 using Monad.Utility;

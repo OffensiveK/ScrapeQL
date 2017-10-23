@@ -23,37 +23,36 @@
 //
 
 #region Using directives
+using System;
+using System.Collections.Generic;
 #endregion
 
-using System;
-using System.Linq;
-using static ScrapeQL.ScrapeQLParser;
-
-namespace ScrapeQL
+namespace ScrapeQLRepl
 {
     /// <summary>
     ///  
     /// </summary>
 
-    
-
-    static class Helper
+    class REPLDirective
     {
         #region Fields
+        public delegate void REPLAction(IEnumerable<string> parameters);
+        public readonly REPLAction Run;
+        public readonly string Helptext;
         #endregion
 
         #region Properties
         #endregion
 
         #region Constructors
+        public REPLDirective(string helptext, REPLAction func)
+        {
+            Run += func;
+            Helptext = helptext;
+        }
         #endregion
 
         #region Methods
         #endregion
-
-        public static bool InEnumCaseless<T>(string str)
-        {
-            return Enum.GetValues(typeof(T)).Cast<T>().Any(x => string.Equals(x.ToString(), str, StringComparison.OrdinalIgnoreCase));
-        }
     }
 }

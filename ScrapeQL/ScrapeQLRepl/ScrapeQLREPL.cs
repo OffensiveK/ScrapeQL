@@ -23,7 +23,7 @@
 //
 
 #region Using directives
-using HtmlAgilityPack;
+using Monad;
 using Monad.Parsec;
 using Monad.Parsec.Token;
 using Monad.Utility;
@@ -32,6 +32,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using ScrapeQLRun;
 #endregion
 
 namespace ScrapeQLCLI
@@ -43,44 +44,50 @@ namespace ScrapeQLCLI
     class ScrapeQLREPL
     {
         [Flags]
-        public enum Setting { Verbose = 1, PrintScope = 2, PrintDebug = 4 };
+        public enum Setting { None = 0, Verbose = 1, PrintScope = 2, PrintDebug = 4, PrintParsed = 8, DontRun = 16 };
 
         #region Fields
-        #endregion
-        Setting settings;
+        Setting Settings;
         String promptString = "ScrapeQL>";
         ScrapeQLParser parser;
         ScrapeQLRunner runner;
         Parser<ImmutableList<ReplParseObject>> replParser;
-
-        #region Properties
         #endregion
 
         #region Constructors
-        #endregion
-        public ScrapeQLREPL(Setting settings = 0)
+        public ScrapeQLREPL(Setting settings = Setting.None)
         {
-            this.settings = settings;
+            if (settings.HasFlag(Setting.PrintDebug))
+            {
+                settings = settings | Setting.PrintScope | Setting.PrintParsed;
+            }
+            this.Settings = settings;
             parser = new ScrapeQLParser();
             runner = new ScrapeQLRunner();
             BuildReplParser();
         }
+        #endregion
 
-        class ReplParseObject : Token
+        abstract class ReplParseObject : Term
         {
             public ReplParseObject(SrcLoc location) : base(location)
             {
             }
         }
 
-        class Command : ReplParseObject
+        class REPLDirectiveParsedObject : ReplParseObject
         {
             public string value;
             public ImmutableList<string> parameters;
-            public Command(String option, ImmutableList<string> parameters, SrcLoc location) : base(location)
+            public REPLDirectiveParsedObject(String option, ImmutableList<string> parameters, SrcLoc location) : base(location)
             {
                 this.value = option;
                 this.parameters = parameters;
+            }
+
+            public override string ParsedObjectDisplayString()
+            {
+                return String.Format("CommmandObject [ command: {0} Parameters: [{1}] ]",value,parameters.Foldr((x,acc) => acc + " "+x,""));
             }
         }
 
@@ -91,25 +98,32 @@ namespace ScrapeQLCLI
             {
                 Query = query;
             }
+
+            public override string ParsedObjectDisplayString()
+            {
+                return String.Format("QueryContainter [ Query: {0} ]", Query.ParsedObjectDisplayString());
+            }
         }
 
         private void BuildReplParser()
         {
-            var ParserParameter = Prim.Many1(Prim.Item());
+
+            var ParserParameter = Prim.Many1(Prim.Choice(Prim.OneOf("_>"),Prim.LetterOrDigit()));
 
             var ParserQuery = from query in parser.TopLevelParser()
+                              from _ in Prim.WhiteSpace()
                               select new QueryContainer(query) as ReplParseObject;
 
-            var ParserCommand = from _ in Prim.Character(':')
-                               where _.Location.Column == 1
-                               from option in Prim.Many1(Prim.Letter())
-                               from __ in Prim.SimpleSpace()
-                               from parameters in Prim.SepBy(ParserParameter, Prim.SimpleSpace())
-                               select new Command(option.AsString(),parameters.AsStrings(), _.Location) as ReplParseObject;
-
+            var ParserREPLDirective =  from _ in Prim.Character(':')
+                                       from option in Prim.Many1(Prim.Choice(Prim.Character('/'), Prim.LetterOrDigit()))
+                                       from __ in Prim.WhiteSpace()
+                                       from parameters in Prim.SepBy(ParserParameter, Prim.WhiteSpace())
+                                       from ___ in Prim.Character(';')
+                                       from ____ in Prim.WhiteSpace()
+                                       select new REPLDirectiveParsedObject(option.AsString(),parameters.AsStrings(), _.Location) as ReplParseObject;
 
             replParser = (from ts in Prim.Many1(
-                             from lq in Prim.Choice(ParserCommand, ParserQuery)
+                             from lq in Prim.Choice(ParserQuery, ParserREPLDirective)
                              select lq
                          )
                          select ts)
@@ -133,11 +147,16 @@ namespace ScrapeQLCLI
             }
         }
 
-        private void HandleCommand(Command command)
+        private void HandleREPLDirective(REPLDirectiveParsedObject directive)
         {
-            //TODO: Add ":toggleverbose" to ...
-            switch (command.value)
+            switch (directive.value)
             {
+                case "help":
+                    //TODO: Print Help , Possibly autogenerate using REPLDirective
+                    break;
+                case "/":
+                    // TODO: Handle Multi Line Mode
+                    break;
                 case "clear":
                     Console.Clear();
                     break;
@@ -145,12 +164,12 @@ namespace ScrapeQLCLI
                     Environment.Exit((int)ScrapeQLCLI.ExitCodes.Success);
                     break;
                 case "printscope":
-                    runner.PrintScope();
+                    PrintScope();
                     break;
                 case "load":
-                    if (command.parameters.Length == 1)
+                    if (directive.parameters.Length == 1)
                     {
-                        String file = command.parameters.First();
+                        String file = directive.parameters.First();
                         RunFromFile(file);
                     }
                     else
@@ -159,24 +178,50 @@ namespace ScrapeQLCLI
                     }
                     break;
                 case "printvar":
-                    if (command.parameters.Length == 1)
+                    if (directive.parameters.Length == 1)
                     {
-                        String name = command.parameters.First();
-                        runner.PrintVariable(name);
+                        String name = directive.parameters.First();
+                        Console.WriteLine(runner.VariableDisplayString(name));
                     }
                     else
                     {
                         Console.WriteLine("Invalid amount of arguments for 'printvariable'");
                     }
                     break;
-                case "setprompt":
-                    if (command.parameters.Length == 1)
+                case "printsettings":
                     {
-                        promptString = command.parameters.First();
+                        Console.WriteLine(Settings.ToOption());
+                    }
+                    break;
+                case "toggle":
+                    {
+                        foreach(string s in directive.parameters)
+                        {
+                            try
+                            {
+                                Setting set = (Setting) Enum.Parse(typeof(Setting), s);
+                                ToggleSetting(set);
+                            }
+                            catch (Exception e)
+                            {
+                                Console.WriteLine("Could not find setting: "+s);
+                            }
+                        }
+                    }
+                    break;
+                case "setprompt":
+                    if (directive.parameters.Length == 1)
+                    {
+                        promptString = directive.parameters.First();
                     }
                     else
                     {
                         Console.WriteLine("Invalid amount of arguments for 'setpromt'");
+                    }
+                    break;
+                case "test":
+                    {
+                        RunFromFile("test.scrapeql");
                     }
                     break;
                 default:
@@ -188,6 +233,7 @@ namespace ScrapeQLCLI
         private void RunLine(String line)
         {
             var result = replParser.Parse(line);
+          
             if (result.IsFaulted)
             {
                 Console.WriteLine("Error: " + result.Errors.First().Message);
@@ -198,17 +244,36 @@ namespace ScrapeQLCLI
             {
                 var queries = result.Value.First().Item1;
                 var rest = result.Value.Head().Item2.AsString();
+                Console.WriteLine(rest);
                 foreach (ReplParseObject q in queries)
                 {
+                    if (Settings.HasFlag(Setting.PrintParsed))
+                    {
+                        Console.WriteLine(q.ParsedObjectDisplayString());
+                    }
                     if (q is QueryContainer)
                     {
-                        runner.RunQuery((q as QueryContainer).Query);
+                        if (! Settings.HasFlag(Setting.DontRun))
+                        {
+                            try
+                            {
+                                runner.RunQuery((q as QueryContainer).Query);
+                            }
+                            catch (ScrapeQLRunnerException e)
+                            {
+                                Console.WriteLine(e.Message);
+                            }
+                            
+                        }
+                        if (Settings.HasFlag(Setting.PrintScope))
+                        {
+                            PrintScope();
+                        }
                     }
-                    if (q is Command)
+                    if (q is REPLDirectiveParsedObject)
                     {
-                        HandleCommand(q as Command);
+                        HandleREPLDirective(q as REPLDirectiveParsedObject);
                     }
-
                 }
             }
         }
@@ -228,6 +293,16 @@ namespace ScrapeQLCLI
                 Console.WriteLine("The file could not be read:");
                 Console.WriteLine(e.Message);
             }
+        }
+
+        public void PrintScope()
+        {
+            Console.WriteLine(runner.ScopeDisplayString());
+        }
+
+        public void ToggleSetting(Setting s)
+        {
+            Settings ^= s;
         }
     }
 }

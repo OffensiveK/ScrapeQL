@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrapeQL", "ScrapeQL\Scrape
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrapeQLCLI", "ScrapeQLRepl\ScrapeQLCLI.csproj", "{AD9540B5-A3B1-425C-8340-4CFE96D4BAAD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrapeQLRunner", "ScrapeQLRunner\ScrapeQLRunner.csproj", "{48E3C4F2-CFDE-4199-9198-2966A124901D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{AD9540B5-A3B1-425C-8340-4CFE96D4BAAD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AD9540B5-A3B1-425C-8340-4CFE96D4BAAD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AD9540B5-A3B1-425C-8340-4CFE96D4BAAD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{48E3C4F2-CFDE-4199-9198-2966A124901D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{48E3C4F2-CFDE-4199-9198-2966A124901D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{48E3C4F2-CFDE-4199-9198-2966A124901D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{48E3C4F2-CFDE-4199-9198-2966A124901D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

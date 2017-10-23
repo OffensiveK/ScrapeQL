@@ -31,7 +31,6 @@ using System.Threading.Tasks;
 using NDesk.Options;
 using ScrapeQL;
 using System.IO;
-using HtmlAgilityPack;
 using Monad.Utility;
 #endregion
 
@@ -42,17 +41,8 @@ namespace ScrapeQLCLI
         [Flags]
         public enum ExitCodes : int
         {
-            //TODO: Make real exit codes
             Success = 0,
-            InvalidArguments = 1,
-            Code3 = 2,
-            Code4 = 4
-            //..
-        }
-
-        static void DoNothing()
-        {
-
+            InvalidArguments = 1
         }
 
         static void ShowHelp(OptionSet p)
@@ -62,18 +52,21 @@ namespace ScrapeQLCLI
 
         static void Main(string[] args)
         {
-            ScrapeQLREPL repl = new ScrapeQLREPL();
-            repl.Run();
-
             string inputfile;
-            bool debugMode;
+            string outputfile;
+            bool debugMode = false;
+            bool printhelp = false;
+            bool printversion = false;
+            bool runrepl = false;
+            bool append = false;
             var parameters = new OptionSet()
             {
-                { "v|version", "print version info", x => DoNothing() },
-                { "o|output", "output file name", x => DoNothing() },
+                { "r|repl", "run REPL", x => runrepl = true },
+                { "v|version", "print version info", x => printversion = true },
+                { "o|output", "output file name", x => outputfile = x },
                 { "i|input", "input file name", x => inputfile = x },
-                { "a|append", "append to output file?", x => DoNothing() },
-                { "h|help", "print help", x => DoNothing() },
+                { "a|append", "append to output file?", x => append = true },
+                { "h|help", "print help", x => printhelp = true },
                 { "d|debug", "debug mode", x => debugMode = true }
 
             };
@@ -90,12 +83,31 @@ namespace ScrapeQLCLI
                 Environment.Exit((int) ExitCodes.InvalidArguments);
             }
 
-            //TODO: if help is set print help, exit programm
-            //TODO: if version is set print version, exit programm
+            if (printhelp)
+            {
+                ShowHelp(parameters);
+            }
+            if (printversion)
+            {
+                Console.WriteLine(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version); 
+            }
+            if (runrepl)
+            {
+                ScrapeQLREPL.Setting settings = ScrapeQLREPL.Setting.None;
+                if (debugMode)
+                {
+                    settings = ScrapeQLREPL.Setting.PrintDebug | settings;
+                }
+                ScrapeQLREPL repl = new ScrapeQLREPL(settings);
+
+                repl.Run(); // Repl Calls Exit itself
+            }
             //TODO: if inputfile set, run interpreter over filetext
             //TODO: if inputfile not set, run interpreter as REPL, ignore outputfile, write output to shell
             //TODO: if outputfile set: if append set append output to file else write output to file
             //TODO: if outputfile not set, write output to console
+
+            Environment.Exit((int)ExitCodes.Success);
         }
     }
 }

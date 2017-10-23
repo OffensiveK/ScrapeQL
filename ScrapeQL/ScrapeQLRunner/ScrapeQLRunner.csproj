@@ -4,16 +4,15 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{AD9540B5-A3B1-425C-8340-4CFE96D4BAAD}</ProjectGuid>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>ScrapeQLRepl</RootNamespace>
-    <AssemblyName>ScrapeQLRepl</AssemblyName>
+    <ProjectGuid>{48E3C4F2-CFDE-4199-9198-2966A124901D}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>ScrapeQLRunner</RootNamespace>
+    <AssemblyName>ScrapeQLRunner</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -23,7 +22,6 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -35,8 +33,8 @@
     <Reference Include="CSharpMonad, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\csharp-monad.1.0.1\lib\net45\CSharpMonad.dll</HintPath>
     </Reference>
-    <Reference Include="NDesk.Options, Version=0.2.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\NDesk.Options.0.2.1\lib\NDesk.Options.dll</HintPath>
+    <Reference Include="HtmlAgilityPack, Version=1.6.1.0, Culture=neutral, PublicKeyToken=bd319b19eaf3b43a, processorArchitecture=MSIL">
+      <HintPath>..\packages\HtmlAgilityPack.1.6.1\lib\Net45\HtmlAgilityPack.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -48,24 +46,18 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Program.cs" />
+    <Compile Include="ScrapeQLRunner.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="REPLDirective.cs" />
-    <Compile Include="ScrapeQLREPL.cs" />
+    <Compile Include="ScrapeQLRunnerException.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\ScrapeQLRunner\ScrapeQLRunner.csproj">
-      <Project>{48e3c4f2-cfde-4199-9198-2966a124901d}</Project>
-      <Name>ScrapeQLRunner</Name>
-    </ProjectReference>
     <ProjectReference Include="..\ScrapeQL\ScrapeQL.csproj">
       <Project>{e629ece3-8355-48f6-b97b-c7cb278cf19b}</Project>
       <Name>ScrapeQL</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

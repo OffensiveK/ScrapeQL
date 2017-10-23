@@ -1,6 +1,9 @@
 # ScrapeQL
 Query language for webscraping
+## Dependencies
+We are using the packages "HTMLAgilityPack" and "Csharpmonad" to realize this project.
 
+## Syntax
 Regarding the syntax, ScrapeQL is much alike its famous paragon, SQL.
 
 There are several queries.
@@ -20,3 +23,4 @@ WRITE identifier TO "filename.fileextension"
 ```
 SELECT "selector" FROM identifier <WHERE attribute=value>
 ```
+

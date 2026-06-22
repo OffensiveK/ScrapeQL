@@ -1,3 +1,7 @@
+# Deprecated
+
+This was a little fun project I wrote while still learning to program many years ago. It is now deprecated. 
+
 # ScrapeQL
 Query language for webscraping
 ## Dependencies
